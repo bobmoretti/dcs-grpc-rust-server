@@ -2,7 +2,7 @@ use std::future::Future;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use crate::rpc::{HookRpc, MissionRpc};
+use crate::rpc::{HookRpc, MissionRpc, ExportRpc};
 use crate::shutdown::{Shutdown, ShutdownHandle};
 use crate::stats::Stats;
 use dcs_module_ipc::IPC;
@@ -21,6 +21,7 @@ use stubs::timer::v0::timer_service_server::TimerServiceServer;
 use stubs::trigger::v0::trigger_service_server::TriggerServiceServer;
 use stubs::unit::v0::unit_service_server::UnitServiceServer;
 use stubs::world::v0::world_service_server::WorldServiceServer;
+use stubs::export::v0::export_service_server::ExportServiceServer;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot::{self, Receiver};
 use tokio::time::sleep;
@@ -39,6 +40,7 @@ struct ServerState {
     eval_enabled: bool,
     ipc_mission: IPC<StreamEventsResponse>,
     ipc_hook: IPC<()>,
+    ipc_export: IPC<()>,
     stats: Stats,
 }
 
@@ -61,6 +63,7 @@ impl Server {
     pub fn new(config: &Config) -> Result<Self, StartError> {
         let ipc_mission = IPC::default();
         let ipc_hook = IPC::default();
+        let ipc_export = IPC::default();
         let runtime = Runtime::new()?;
         let shutdown = Shutdown::new();
         Ok(Self {
@@ -71,6 +74,7 @@ impl Server {
                 eval_enabled: config.eval_enabled,
                 ipc_mission,
                 ipc_hook,
+                ipc_export,
                 stats: Stats::new(shutdown.handle()),
             },
             shutdown,
@@ -121,6 +125,10 @@ impl Server {
         &self.state.ipc_hook
     }
 
+    pub fn ipc_export(&self) -> &IPC<()> {
+        &self.state.ipc_export
+    }
+
     pub fn stats(&self) -> &Stats {
         &self.state.stats
     }
@@ -159,15 +167,18 @@ async fn try_run(
         eval_enabled,
         ipc_mission,
         ipc_hook,
+        ipc_export,
         stats,
     } = state;
 
     let mut mission_rpc = MissionRpc::new(ipc_mission, stats.clone(), shutdown_signal.clone());
+    let mut export_rpc = ExportRpc::new(ipc_export, stats.clone(), shutdown_signal.clone());
     let mut hook_rpc = HookRpc::new(ipc_hook, stats, shutdown_signal.clone());
 
     if eval_enabled {
         mission_rpc.enable_eval();
         hook_rpc.enable_eval();
+        export_rpc.enable_eval();
     }
 
     transport::Server::builder()
@@ -177,6 +188,7 @@ async fn try_run(
         .add_service(CustomServiceServer::new(mission_rpc.clone()))
         .add_service(GroupServiceServer::new(mission_rpc.clone()))
         .add_service(HookServiceServer::new(hook_rpc))
+        .add_service(ExportServiceServer::new(export_rpc))
         .add_service(MissionServiceServer::new(mission_rpc.clone()))
         .add_service(NetServiceServer::new(mission_rpc.clone()))
         .add_service(TimerServiceServer::new(mission_rpc.clone()))

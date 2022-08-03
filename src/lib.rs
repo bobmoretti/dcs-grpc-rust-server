@@ -113,9 +113,9 @@ pub fn next(lua: &Lua, (env, callback): (i32, Function)) -> LuaResult<bool> {
         let next = match env {
             1 => server.ipc_mission().try_next(),
             2 => server.ipc_hook().try_next(),
+            3 => server.ipc_export().try_next(),
             _ => return Ok(false),
         };
-
         if let Some(mut next) = next {
             server.stats().track_call();
 

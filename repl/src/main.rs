@@ -3,20 +3,22 @@ use std::io::{self, BufRead};
 use clap::Parser;
 use serde_json::Value;
 use stubs::custom::v0::custom_service_client::CustomServiceClient;
+use stubs::export::v0::export_service_client::ExportServiceClient;
 use stubs::hook::v0::hook_service_client::HookServiceClient;
-use stubs::{custom, hook};
+use stubs::{custom, export, hook};
 use tonic::{transport, Code, Status};
 
 #[derive(Parser)]
 #[clap(name = "repl")]
 struct Opts {
-    #[clap(short, long, possible_values = ["mission", "hook"], default_value = "mission")]
+    #[clap(short, long, possible_values = ["mission", "hook", "export"], default_value = "export")]
     env: String,
 }
 
 enum Client<T> {
     Mission(CustomServiceClient<T>),
     Hook(HookServiceClient<T>),
+    Export(ExportServiceClient<T>),
 }
 
 #[tokio::main]
@@ -27,6 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = match opts.env.as_str() {
         "mission" => Client::Mission(CustomServiceClient::connect(endpoint).await?),
         "hook" => Client::Hook(HookServiceClient::connect(endpoint).await?),
+        "export" => Client::Export(ExportServiceClient::connect(endpoint).await?),
         _ => unreachable!("invalid --env value"),
     };
 
@@ -42,6 +45,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .map(|res| res.into_inner().json),
                 Client::Hook(client) => client
                     .eval(hook::v0::EvalRequest { lua })
+                    .await
+                    .map(|res| res.into_inner().json),
+                Client::Export(client) => client
+                    .eval(export::v0::EvalRequest { lua })
                     .await
                     .map(|res| res.into_inner().json),
             };

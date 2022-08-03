@@ -20,6 +20,7 @@ mod timer;
 mod trigger;
 mod unit;
 mod world;
+mod export;
 
 #[derive(Clone)]
 pub struct MissionRpc {
@@ -37,6 +38,14 @@ struct Cache {
 
 #[derive(Clone)]
 pub struct HookRpc {
+    ipc: IPC<()>,
+    stats: Stats,
+    eval_enabled: bool,
+    shutdown_signal: ShutdownHandle,
+}
+
+#[derive(Clone)]
+pub struct ExportRpc {
     ipc: IPC<()>,
     stats: Stats,
     eval_enabled: bool,
@@ -82,6 +91,33 @@ impl MissionRpc {
 impl HookRpc {
     pub fn new(ipc: IPC<()>, stats: Stats, shutdown_signal: ShutdownHandle) -> Self {
         HookRpc {
+            ipc,
+            stats,
+            eval_enabled: false,
+            shutdown_signal,
+        }
+    }
+
+    pub fn enable_eval(&mut self) {
+        self.eval_enabled = true;
+    }
+
+    pub async fn request<I, O>(&self, method: &str, request: Request<I>) -> Result<O, Status>
+    where
+        I: serde::Serialize + Send + Sync + 'static,
+        for<'de> O: serde::Deserialize<'de> + Send + Sync + std::fmt::Debug + 'static,
+    {
+        let _guard = self.stats.track_queue_size();
+        self.ipc
+            .request(method, Some(request.into_inner()))
+            .await
+            .map_err(to_status)
+    }
+}
+
+impl ExportRpc {
+    pub fn new(ipc: IPC<()>, stats: Stats, shutdown_signal: ShutdownHandle) -> Self {
+        ExportRpc {
             ipc,
             stats,
             eval_enabled: false,

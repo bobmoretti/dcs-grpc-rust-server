@@ -1,14 +1,21 @@
-local isMissionEnv = DCS == nil
+local isMissionEnv = DCS == nil and LoGetVersionInfo == nil
+local isExportEnv = DCS == nil and LoGetVersionInfo ~= nil
 
 if isMissionEnv then
   env.info("[GRPC] mission loading ...")
+  GRPC.LOG_PREFIX = "[GRPC]"
+elseif isExportEnv then
+  log.write("[GRPC-Export]", log.INFO, "export loading ...")
+  GRPC.LOG_PREFIX = "[GRPC-Export]"
+else
+  GRPC.LOG_PREFIX = "[GRPC-Hook]"
 end
 
 --
 -- load and start RPC
 --
 
-if isMissionEnv then
+if isMissionEnv or isExportEnv then
   grpc.start({
     writeDir = lfs.writedir(),
     dllPath = GRPC.dllPath,
@@ -54,7 +61,7 @@ GRPC.logError = function(msg)
   if isMissionEnv then
     env.error("[GRPC] "..msg)
   else
-    log.write("[GRPC-Hook]", log.ERROR, msg)
+    log.write(GRPC.LOG_PREFIX, log.ERROR, msg)
   end
 end
 
@@ -64,7 +71,7 @@ GRPC.logWarning = function(msg)
   if isMissionEnv then
     env.info("[GRPC] "..msg)
   else
-    log.write("[GRPC-Hook]", log.WARNING, msg)
+    log.write(GRPC.LOG_PREFIX, log.WARNING, msg)
   end
 end
 
@@ -73,7 +80,7 @@ GRPC.logInfo = function(msg)
   if isMissionEnv then
     env.info("[GRPC] "..msg)
   else
-    log.write("[GRPC-Hook]", log.INFO, msg)
+    log.write(GRPC.LOG_PREFIX, log.INFO, msg)
   end
 end
 
@@ -149,6 +156,7 @@ dofile(GRPC.luaPath .. [[methods\timer.lua]])
 dofile(GRPC.luaPath .. [[methods\trigger.lua]])
 dofile(GRPC.luaPath .. [[methods\unit.lua]])
 dofile(GRPC.luaPath .. [[methods\world.lua]])
+dofile(GRPC.luaPath .. [[methods\export.lua]])
 
 --
 -- RPC request handler
@@ -161,7 +169,13 @@ GRPC.stop = function()
 end
 
 local function handleRequest(method, params)
+  -- GRPC.logDebug("handleRequest: "..method)
   local fn = GRPC.methods[method]
+  if fn then
+    -- GRPC.logDebug("handleRequest: "..method.." found")
+  else
+    GRPC.logWarning("handleRequest: "..method.." not found")
+  end
 
   if type(fn) == "function" then
     local ok, result = xpcall(function() return fn(params) end, debug.traceback)
@@ -182,6 +196,7 @@ end
 
 local MISSION_ENV = 1
 local HOOK_ENV = 2
+local EXPORT_ENV = 3
 
 -- Adjust the interval at which the gRPC server is polled for requests based on the throughput
 -- limit. The higher the throughput limit, the more often the gRPC is polled per second.
@@ -237,6 +252,23 @@ if isMissionEnv then
     end
   end
   world.addEventHandler(eventHandler)
+elseif isExportEnv then
+  local function next()
+    local i = 0
+    while grpc.next(EXPORT_ENV, handleRequest) do
+      i = i + 1
+      if i > callsPerTick then
+        break
+      end
+    end
+  end
+
+  function GRPC.onSimulationFrameExport()
+    local ok, err = pcall(next)
+    if not ok then
+      GRPC.logError("Error retrieving next command: "..tostring(err))
+    end
+  end
 else -- hook env
   -- execute gRPC requests
   local function next()
@@ -252,7 +284,7 @@ else -- hook env
   -- scheduel gRPC request execution
   local skipFrames = math.ceil(interval / 0.016) -- 0.016 = 16ms = 1 frame at 60fps
   local frame = 0
-  function GRPC.onSimulationFrame()
+  function GRPC.onSimulationFrameHook()
     grpc.simulationFrame(DCS.getModelTime())
 
     frame = frame + 1
@@ -268,4 +300,6 @@ end
 
 if isMissionEnv then
   env.info("[GRPC] loaded ...")
+elseif isExportEnv then
+  log.write("[GRPC-Export]", log.INFO, "loaded in export ...")
 end

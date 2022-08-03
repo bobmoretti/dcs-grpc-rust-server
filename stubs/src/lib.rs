@@ -78,6 +78,12 @@ pub mod world {
     }
 }
 
+pub mod export {
+    pub mod v0 {
+        tonic::include_proto!("dcs.export.v0");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::common::v0::{

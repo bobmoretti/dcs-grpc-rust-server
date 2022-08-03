@@ -30,8 +30,8 @@ function handler.onMissionLoadEnd()
 end
 
 function handler.onSimulationFrame()
-  if GRPC.onSimulationFrame then
-    GRPC.onSimulationFrame()
+  if GRPC.onSimulationFrameHook then
+    GRPC.onSimulationFrameHook()
   end
 end
 
