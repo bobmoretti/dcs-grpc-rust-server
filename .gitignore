@@ -10,3 +10,4 @@ grpcurl.exe
 *.exe
 protos/google
 releases/
+target/
