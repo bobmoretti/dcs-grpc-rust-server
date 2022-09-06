@@ -12,6 +12,7 @@ mod atmosphere;
 mod coalition;
 mod controller;
 mod custom;
+mod export;
 mod group;
 mod hook;
 mod mission;
@@ -20,7 +21,6 @@ mod timer;
 mod trigger;
 mod unit;
 mod world;
-mod export;
 
 #[derive(Clone)]
 pub struct MissionRpc {

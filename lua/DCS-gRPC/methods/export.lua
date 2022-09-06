@@ -15,3 +15,32 @@ GRPC.methods.exportEval = function(params)
   
     return GRPC.success(JSON:encode(result))
   end
+
+GRPC.methods.listIndication = function(params)
+  if not params.deviceId then
+    return GRPC.error("Cannot find device id param")
+  end
+  local text = list_indication(params.deviceId)
+  if not text then
+    return GRPC.error("Device #" .. tostring(params.deviceId) .. "not found")
+  end
+  return GRPC.success({indication = text})
+end
+
+GRPC.methods.getArgumentValue = function(params)
+  local device = GetDevice(params.deviceId)
+  if not device then
+    return GRPC.error("Device #" .. tostring(params.deviceId) .. " not found")
+  end
+  local value = device:get_argument_value(params.argument_id)
+  return GRPC.success({value = value})
+end
+
+GRPC.methods.performClickableAction = function(params)
+  local device = GetDevice(params.deviceId)
+  if not device then
+    return GRPC.error("Device #" .. tostring(params.deviceId) .. " not found")
+  end
+  device:performClickableAction(params.argument_id)
+  return GRPC.success({})
+end

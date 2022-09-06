@@ -5,6 +5,16 @@ service ExportService {
   // Evaluate some Lua inside of the hook environment and return the result as a
   // JSON string. Disabled by default.
   rpc Eval(EvalRequest) returns (EvalResponse) {}
+
+  rpc ListIndication(ListIndicationRequest) returns (ListIndicationResponse) {}
+
+  // Get the state of a cockpit widget.
+  rpc GetArgumentValue(GetArgumentValueRequest)
+      returns (GetArgumentValueResponse) {}
+
+  // Perform a clickable action (setting the state of a cockpit widget)
+  rpc PerformClickableAction(PerformClickableActionRequest)
+      returns (PerformClickableActionResponse) {}
 }
 
 message EvalRequest {
@@ -14,3 +24,28 @@ message EvalRequest {
 message EvalResponse {
   string json = 1;
 }
+
+message ListIndicationRequest {
+  int32 device_id = 1;
+}
+
+message ListIndicationResponse {
+  string indication = 1;
+}
+
+message GetArgumentValueRequest {
+  int32 device_id = 1;
+  string argument_name = 2;
+}
+
+message GetArgumentValueResponse {
+  float value = 1;
+}
+
+message PerformClickableActionRequest {
+  int32 device_id = 1;
+  string argument_name = 2;
+  float value = 3;
+}
+
+message PerformClickableActionResponse {}
