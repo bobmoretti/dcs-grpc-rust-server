@@ -44,3 +44,16 @@ GRPC.methods.performClickableAction = function(params)
   device:performClickableAction(params.argument_id)
   return GRPC.success({})
 end
+
+GRPC.methods.getSelfData = function(params)
+  local data = LoGetSelfData()
+
+  if not data then
+    return GRPC.error("Can't get player data")
+  end
+  local json = JSON:encode(data)
+  if not json then
+    return GRPC.error("Couldn't encode player data as json")
+  end
+  return GRPC.success(json)
+end

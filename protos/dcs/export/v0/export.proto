@@ -15,6 +15,8 @@ service ExportService {
   // Perform a clickable action (setting the state of a cockpit widget)
   rpc PerformClickableAction(PerformClickableActionRequest)
       returns (PerformClickableActionResponse) {}
+
+  rpc GetSelfData(Empty) returns (GetSelfDataResponse) {}
 }
 
 message EvalRequest {
@@ -48,4 +50,11 @@ message PerformClickableActionRequest {
   float value = 3;
 }
 
+
 message PerformClickableActionResponse {}
+
+message Empty {}
+
+message GetSelfDataResponse {
+  string json = 1;
+}

@@ -21,6 +21,10 @@ type PerformClickableActionRequest = Request<export_grpc::PerformClickableAction
 type PerformClickableActionResponse = Response<export_grpc::PerformClickableActionResponse>;
 type PerformClickableActionResult = ExportResult<PerformClickableActionResponse>;
 
+type GetSelfDataRequest = Request<export_grpc::Empty>;
+type GetSelfDataResponse = Response<export_grpc::GetSelfDataResponse>;
+type GetSelfDataResult = ExportResult<GetSelfDataResponse>;
+
 #[tonic::async_trait]
 impl ExportService for ExportRpc {
     async fn eval(&self, request: EvalRequest) -> EvalResult {
@@ -41,9 +45,16 @@ impl ExportService for ExportRpc {
         Ok(Response::new(result))
     }
 
-    async fn perform_clickable_action(&self, request: PerformClickableActionRequest) -> PerformClickableActionResult {
+    async fn perform_clickable_action(
+        &self,
+        request: PerformClickableActionRequest,
+    ) -> PerformClickableActionResult {
         let result = self.request("performClickableAction", request).await?;
         Ok(Response::new(result))
     }
 
+    async fn get_self_data(&self, request: GetSelfDataRequest) -> GetSelfDataResult {
+        let json: String = self.request("getSelfData", request).await?;
+        Ok(Response::new(export_grpc::GetSelfDataResponse { json }))
+    }
 }
