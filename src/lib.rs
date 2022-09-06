@@ -118,6 +118,7 @@ pub fn next(lua: &Lua, (env, callback): (i32, Function)) -> LuaResult<bool> {
         };
         if let Some(mut next) = next {
             server.stats().track_call();
+            log::debug!("NEXT OBJ: {:?}", next.params(lua));
 
             let method = next.method().to_string();
             let params = next

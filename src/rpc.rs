@@ -131,14 +131,21 @@ impl ExportRpc {
 
     pub async fn request<I, O>(&self, method: &str, request: Request<I>) -> Result<O, Status>
     where
-        I: serde::Serialize + Send + Sync + 'static,
+        I: serde::Serialize + Send + Sync + 'static + std::fmt::Debug,
         for<'de> O: serde::Deserialize<'de> + Send + Sync + std::fmt::Debug + 'static,
     {
+        let params = request.into_inner();
+        log::debug!("{:?}", params);
+        use mlua::{Lua, LuaSerdeExt, SerializeOptions};
+        let lua = Lua::new();
+        let serialized = lua.to_value_with(
+            &params,
+            SerializeOptions::new().serialize_none_to_null(false),
+        );
+        log::debug!("Serialized as: {:?}", serialized);
+
         let _guard = self.stats.track_queue_size();
-        self.ipc
-            .request(method, Some(request.into_inner()))
-            .await
-            .map_err(to_status)
+        self.ipc.request(method, Some(params)).await.map_err(to_status)
     }
 }
 
