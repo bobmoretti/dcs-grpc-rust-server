@@ -6,7 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut rpc_client = DcsGrpcClient::new();
     let indication = rpc_client.list_indication(4)?;
     println!("Indication:\n{}", indication);
-
+    println!("Aircraft name: {}", rpc_client.get_aircraft_name()?);
     Ok(())
 }
 

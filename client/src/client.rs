@@ -79,6 +79,11 @@ impl DcsGrpcClient<Channel> {
         Ok(json)
     }
 
+    pub fn get_aircraft_name(&mut self) -> Result<String, Error> {
+        let json = self.get_self_data()?;
+        return Ok(json["Name"].to_string());
+    }
+
     pub fn new() -> Self {
         let runtime = trt::Builder::new_multi_thread()
             .worker_threads(1)
