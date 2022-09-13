@@ -41,15 +41,14 @@ message GetArgumentValueRequest {
 }
 
 message GetArgumentValueResponse {
-  float value = 1;
+  double value = 1;
 }
 
 message PerformClickableActionRequest {
   int32 device_id = 1;
   string argument_name = 2;
-  float value = 3;
+  double value = 3;
 }
-
 
 message PerformClickableActionResponse {}
 
