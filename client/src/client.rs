@@ -81,7 +81,8 @@ impl DcsGrpcClient<Channel> {
 
     pub fn get_aircraft_name(&mut self) -> Result<String, Error> {
         let json = self.get_self_data()?;
-        return Ok(json["Name"].to_string());
+        let err_msg = "object returned from LoGetSelfData() should have a 'name' key";
+        return Ok(json["Name"].as_str().expect(err_msg).to_string());
     }
 
     pub fn new() -> Self {
