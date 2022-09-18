@@ -1,6 +1,6 @@
 use eframe;
 use eframe::egui;
-use std::sync::mpsc::{channel, Receiver};
+use std::sync::mpsc::{channel, Receiver, Sender};
 
 use egui::FontFamily::Proportional;
 use egui::FontId;
@@ -19,19 +19,35 @@ pub enum Message {
     SetAircraftType(dcs::Aircraft),
 }
 
-// #[derive(Debug)]
-pub struct GuiState {
-    pub(crate) connection_state: ConnectionState,
-    pub(crate) ctx: Option<egui::Context>,
-    pub(crate) channel_rx: Receiver<Message>,
-    pub(crate) aircraft_type: dcs::Aircraft,
+pub struct GuiWorkerInterface {
+    context: egui::Context,
+    channel_tx: Sender<Message>,
+}
+impl GuiWorkerInterface {
+    pub fn notify(&mut self, message: Message) {
+        self.channel_tx
+            .send(message)
+            .expect("Should be able to send a message to GUI thread");
+        self.context.request_repaint();
+    }
+
+    pub fn new(context: egui::Context, channel_tx: Sender<Message>) -> Self {
+        Self {
+            context: context,
+            channel_tx: channel_tx,
+        }
+    }
+}
+struct GuiState {
+    connection_state: ConnectionState,
+    channel_rx: Receiver<Message>,
+    aircraft_type: dcs::Aircraft,
 }
 
 impl Default for GuiState {
     fn default() -> GuiState {
         GuiState {
             connection_state: ConnectionState::Disconnected,
-            ctx: None,
             channel_rx: channel().1,
             aircraft_type: dcs::Aircraft::Unknown,
         }
@@ -53,22 +69,17 @@ impl GuiState {
     fn is_connected(&self) -> bool {
         self.connection_state == ConnectionState::Connected
     }
-
-    pub fn send_message(&mut self, message: Message)
-    {
-        
-    }
 }
 
 #[derive(Default)]
 pub struct Gui {
-    state: Box<GuiState>,
+    state: GuiState,
 }
 
 impl Gui {
-    pub fn new(cc: &eframe::CreationContext<'_>, mut state: Box<GuiState>) -> Self {
-        let ctx = &cc.egui_ctx;
-        let mut style = (*ctx.style()).clone();
+    pub fn new(cc: &eframe::CreationContext<'_>, rx: Receiver<Message>) -> (Self, egui::Context) {
+        let ctx = cc.egui_ctx.clone();
+        let mut style = (*cc.egui_ctx.style()).clone();
 
         // Redefine text_styles
         style.text_styles = [
@@ -90,8 +101,15 @@ impl Gui {
 
         // Mutate global style with above changes
         ctx.set_style(style);
-        state.ctx = Some(ctx.clone());
-        Self { state: state }
+        (
+            Self {
+                state: GuiState {
+                    channel_rx: rx,
+                    ..GuiState::default()
+                },
+            },
+            ctx,
+        )
     }
 }
 
